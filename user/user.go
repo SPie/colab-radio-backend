@@ -1,11 +1,11 @@
 package user
 
 import (
-   "github.com/jinzhu/gorm" 
+    "github.com/spie/colab-radio-backend/db"
 )
 
 type User struct {
-    gorm.Model
+    db.Model
     Uuid string
     SpotifyId string
     Email string

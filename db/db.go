@@ -22,9 +22,3 @@ func (connection *Connection) Close() error {
 
     return nil
 }
-
-func (connection *Connection) AutoMigration(values ...interface{}) *Connection {
-    connection.db.AutoMigration(values)
-
-    return connection
-}
