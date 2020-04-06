@@ -3,28 +3,61 @@ package db
 import (
     "fmt"
 
+    "github.com/jinzhu/gorm"
     _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
-type Connection struct {
-    db *gorm.DB
+type ConnectionFactory struct {
+    username string
+    password string
+    host string
+    port string
+    database string
+    connection *gorm.DB
 }
 
-func Open(username string, password string, host string, port string, database string) *Connection, error {
-    return &Connection{db: gorm.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/%s", username, password, host, port, database))}
+func NewConnectionFactory(username string, password string, host string, port string, database string) *ConnectionFactory {
+    return &ConnectionFactory{
+	username: username,
+	password: password,
+	host: host,
+	port: port,
+	database: database,
+    }
 }
 
-func (connection *Connection) Close() error {
-    err := connection.db.Close()
-    if err != nil {
-	return err
+func (connectionFactory *ConnectionFactory) GetConnection() *gorm.DB {
+    if connectionFactory.connection != nil {
+	return connectionFactory.connection
     }
 
-    return nil
-}
+    connection, err := gorm.Open(
+	"mysql",
+	fmt.Sprintf(
+	    "%s:%s@(%s:%s)/%s?parseTime=true",
+	    connectionFactory.username,
+	    connectionFactory.password,
+	    connectionFactory.host,
+	    connectionFactory.port,
+	    connectionFactory.database,
+	),
+    )
+    if err != nil {
+	panic(err)
+    }
 
-func (connection *Connection) AutoMigration(values ...interface{}) *Connection {
-    connection.db.AutoMigration(values)
+    connectionFactory.connection = connection
 
     return connection
+}
+
+func (connectionFactory *ConnectionFactory) Close() error {
+    if connectionFactory.connection == nil {
+	return nil
+    }
+
+    err := connectionFactory.connection.Close()
+    connectionFactory.connection = nil
+
+    return err
 }
