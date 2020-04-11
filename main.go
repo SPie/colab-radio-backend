@@ -16,7 +16,7 @@ func main() {
 	panic(err)
     }
 
-    router := router.SetUp(setUpConnectionFactory(), setUpAuthControllerFactory())
+    router := router.SetUp(setUpConnectionFactory(), setUpAuthenticatorFactory(), setUpAuthControllerFactory())
     
     err = router.Run()
     if err != nil {
@@ -24,12 +24,16 @@ func main() {
     }
 }
 
-func setUpAuthControllerFactory() auth.AuthControllerFactory {
-    return auth.NewAuthControllerFactory(
+func setUpAuthenticatorFactory() auth.AuthenticatorFactory {
+    return auth.NewAuthenticatorFactory(
     	os.Getenv("AUTH_CALLBACK_URL"),
 	os.Getenv("SPOTIFY_CLIENT_ID"),
 	os.Getenv("SPOTIFY_SECRET"),
     )
+}
+
+func setUpAuthControllerFactory() auth.AuthControllerFactory {
+    return auth.NewAuthControllerFactory()
 }
 
 func setUpConnectionFactory() *db.ConnectionFactory {

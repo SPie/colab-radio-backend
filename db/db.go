@@ -7,6 +7,10 @@ import (
     _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
+const (
+    CONNECTION_FACTORY = "ConnectionFactory"
+)
+
 type ConnectionFactory struct {
     username string
     password string

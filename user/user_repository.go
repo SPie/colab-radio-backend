@@ -6,6 +6,8 @@ import (
     "colab-radio/db"
 )
 
+const USER_REPOSITORY = "UserRepository"
+
 type UserRepository struct {
     connectionFactory *db.ConnectionFactory
 }
