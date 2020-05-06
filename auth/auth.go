@@ -11,7 +11,6 @@ import (
 const (
     AUTHENTICATOR   = "Authenticator"
     CLIENT          = "Client"
-    AUTH_CONTROLLER = "AuthController"
 
     ACCESS_TOKEN  	= "AccessToken"
     ACCESS_TOKEN_EXPIRY = "AccessTokenExpiry"

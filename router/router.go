@@ -8,35 +8,36 @@ import (
     "colab-radio/user"
 )
 
-func SetUp(connectionFactory *db.ConnectionFactory, authenticatorFactory auth.AuthenticatorFactory, authControllerFactory auth.AuthControllerFactory) *gin.Engine {
+func SetUp(connectionFactory *db.ConnectionFactory, authenticatorFactory auth.AuthenticatorFactory, authControllerFactory auth.AuthControllerFactory, userControllerFactory user.UserControllerFactory) *gin.Engine {
     engine := gin.New()
 
-    engine.Use(SetUpRepositories(connectionFactory))
+    engine.Use(setUpRepositories(connectionFactory))
 
-    engine.Use(SetUpAuthenticator(authenticatorFactory))
+    engine.Use(setUpAuthenticator(authenticatorFactory))
 
-    engine.Use(SetUpControllers(authControllerFactory))
+    engine.Use(setUpControllers(authControllerFactory, userControllerFactory))
 
     api := engine.Group("/api")
     {
 	api.GET("/auth", func(c *gin.Context) {
-	    authControllerFactory.NewAuthController().InitAuth(c)
+	    getAuthController(c).InitAuth(c)
 	})
 	api.POST("/auth-finish", func(c *gin.Context) {
-	    authControllerFactory.NewAuthController().FinishAuth(c)
+	    getAuthController(c).FinishAuth(c)
 	})
 	
-	// TODO authorization middleware
-
-	api.GET("/users", func (c *gin.Context) {
-	    // TODO get authenticated user
-	})
+	api.Use(auth.Authorization())
+	{
+	    api.GET("/users", func (c *gin.Context) {
+		getUserController(c).GetAuthenticatedUser(c)
+	    })
+	}
     }
 
     return engine
 }
 
-func SetUpRepositories(connectionFactory *db.ConnectionFactory) gin.HandlerFunc {
+func setUpRepositories(connectionFactory *db.ConnectionFactory) gin.HandlerFunc {
     return func(c *gin.Context) {
 	defer connectionFactory.Close()
 
@@ -46,7 +47,7 @@ func SetUpRepositories(connectionFactory *db.ConnectionFactory) gin.HandlerFunc 
     }
 }
 
-func SetUpAuthenticator(authenticatorFactory auth.AuthenticatorFactory) gin.HandlerFunc {
+func setUpAuthenticator(authenticatorFactory auth.AuthenticatorFactory) gin.HandlerFunc {
     return func(c *gin.Context) {
 	c.Set(auth.AUTHENTICATOR, authenticatorFactory.NewAuthenticator())
 
@@ -54,10 +55,23 @@ func SetUpAuthenticator(authenticatorFactory auth.AuthenticatorFactory) gin.Hand
     }
 }
 
-func SetUpControllers(authControllerFactory auth.AuthControllerFactory) gin.HandlerFunc {
+func setUpControllers(authControllerFactory auth.AuthControllerFactory, userControllerFactory user.UserControllerFactory) gin.HandlerFunc {
     return func(c *gin.Context) {
 	c.Set(auth.AUTH_CONTROLLER, authControllerFactory.NewAuthController())
+	c.Set(user.USER_CONTROLLER, userControllerFactory.NewUserController())
 
 	c.Next()
     }
+}
+
+func getAuthController(c *gin.Context) auth.AuthController {
+    authController, _ := c.Get(auth.AUTH_CONTROLLER)
+
+    return authController.(auth.AuthController)
+}
+
+func getUserController(c *gin.Context) user.UserController {
+    userController, _ := c.Get(user.USER_CONTROLLER)
+
+    return userController.(user.UserController)
 }

@@ -8,6 +8,7 @@ import (
     "colab-radio/auth"
     "colab-radio/db"
     "colab-radio/router"
+    "colab-radio/user"
 )
 
 func main() {
@@ -16,7 +17,7 @@ func main() {
 	panic(err)
     }
 
-    router := router.SetUp(setUpConnectionFactory(), setUpAuthenticatorFactory(), setUpAuthControllerFactory())
+    router := router.SetUp(setUpConnectionFactory(), setUpAuthenticatorFactory(), setUpAuthControllerFactory(), setUpUserControllerFactory())
     
     err = router.Run()
     if err != nil {
@@ -32,10 +33,6 @@ func setUpAuthenticatorFactory() auth.AuthenticatorFactory {
     )
 }
 
-func setUpAuthControllerFactory() auth.AuthControllerFactory {
-    return auth.NewAuthControllerFactory()
-}
-
 func setUpConnectionFactory() *db.ConnectionFactory {
     return db.NewConnectionFactory(
 	os.Getenv("DB_USERNAME"),
@@ -44,4 +41,12 @@ func setUpConnectionFactory() *db.ConnectionFactory {
 	os.Getenv("DB_PORT"),
 	os.Getenv("DB_DATABASE"),
     )
+}
+
+func setUpAuthControllerFactory() auth.AuthControllerFactory {
+    return auth.NewAuthControllerFactory()
+}
+
+func setUpUserControllerFactory() user.UserControllerFactory {
+    return user.NewUserControllerFactory()
 }

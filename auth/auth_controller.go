@@ -12,6 +12,11 @@ import (
     "colab-radio/user"
 )
 
+const (
+    AUTH_CONTROLLER = "AuthController"
+    AUTHENTICATED_USER = "AuthenticatedUser"
+)
+
 type AuthControllerFactory struct {}
 
 func NewAuthControllerFactory() AuthControllerFactory {
@@ -65,9 +70,7 @@ func (authController AuthController) FinishAuth(c *gin.Context) *gin.Context {
 	userRepository.CreateUser(spotifyUser.ID, spotifyUser.Email)
     }
 
-    expiry := int(token.Expiry.Sub(time.Now()).Seconds())
-    c.SetCookie(ACCESS_TOKEN, token.AccessToken, expiry, "", "", false, true)
-    c.SetCookie(ACCESS_TOKEN_EXPIRY, string(expiry), expiry, "", "", false, true)
+    attachAccessToken(c, token.AccessToken, token.Expiry)
     c.SetCookie(REFRESH_TOKEN, token.RefreshToken, 0, "", "", false, true)
     c.JSON(204, map[string]string{})
 
@@ -88,6 +91,12 @@ func notAuthenticated(c *gin.Context, err error) *gin.Context {
     fmt.Println(err)
     c.JSON(401, map[string]string{})
     return c   
+}
+
+func attachAccessToken(c *gin.Context, accessToken string, expiry time.Time) {
+    expiryTimestamp := int(expiry.Sub(time.Now()).Seconds())
+    c.SetCookie(ACCESS_TOKEN, accessToken, expiryTimestamp, "", "", false, true)
+    c.SetCookie(ACCESS_TOKEN_EXPIRY, string(expiryTimestamp), expiryTimestamp, "", "", false, true)
 }
 
 func Authorization() gin.HandlerFunc {
@@ -111,14 +120,23 @@ func Authorization() gin.HandlerFunc {
 
 	client := authenticator.NewClient(token)
 	
-	_, err = client.CurrentUser()
+	spotifyUser, err := client.CurrentUser()
 	if err != nil {
-	    c.JSON(401, map[string]string{})
 	    c.AbortWithError(401, err)
+	    return
 	}
 
-	// TODO
+	userRepository := getUserRepository(c)
+	user := userRepository.GetUserBySpotifyId(spotifyUser.ID)
+	if user.ID == 0 {
+	    c.AbortWithError(401, errors.New("User doesn't exist"))
+	    return
+	}
+
+	c.Set(AUTHENTICATED_USER, user)
 
 	c.Next()
+
+	attachAccessToken(c, token.AccessToken, token.Expiry)
     }    
 }

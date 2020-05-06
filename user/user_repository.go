@@ -20,16 +20,20 @@ func (userRepository *UserRepository) getConnection() *gorm.DB {
     return userRepository.connectionFactory.GetConnection()
 }
 
-func (userRepository *UserRepository) Exists(spotifyId string) bool {
+func (userRepository *UserRepository) GetUserBySpotifyId(spotifyId string) *User{
     user := User{}
     userRepository.getConnection().First(&user, &User{SpotifyId: spotifyId})
 
-    return user.ID != 0
+    return &user
 }
 
-func (userRepository *UserRepository) CreateUser(spotifyId string, email string) User {
+func (userRepository *UserRepository) Exists(spotifyId string) bool {
+    return userRepository.GetUserBySpotifyId(spotifyId).ID != 0
+}
+
+func (userRepository *UserRepository) CreateUser(spotifyId string, email string) *User {
     user := NewUser(spotifyId, email)
     userRepository.getConnection().Create(&user)
 
-    return user
+    return &user
 }
