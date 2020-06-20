@@ -1,67 +1,45 @@
 package db
 
 import (
-    "fmt"
+	"fmt"
 
-    "github.com/jinzhu/gorm"
-    _ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
-const (
-    CONNECTION_FACTORY = "ConnectionFactory"
-)
-
-type ConnectionFactory struct {
-    username string
-    password string
-    host string
-    port string
-    database string
-    connection *gorm.DB
+// ConnectionHandler holds database connection
+type ConnectionHandler struct {
+	connection *gorm.DB
 }
 
-func NewConnectionFactory(username string, password string, host string, port string, database string) *ConnectionFactory {
-    return &ConnectionFactory{
-	username: username,
-	password: password,
-	host: host,
-	port: port,
-	database: database,
-    }
+// New creates a new Connection handler and opens a gorm connection
+func New(username string, password string, host string, port string, database string) (*ConnectionHandler, error) {
+	connection, err := gorm.Open(
+		"mysql",
+		fmt.Sprintf(
+			"%s:%s@(%s:%s)/%s?parseTime=true",
+			username,
+			password,
+			host,
+			port,
+			database,
+		),
+	)
+	if err != nil {
+		return &ConnectionHandler{}, err
+	}
+
+	return &ConnectionHandler{connection: connection}, nil
 }
 
-func (connectionFactory *ConnectionFactory) GetConnection() *gorm.DB {
-    if connectionFactory.connection != nil {
-	return connectionFactory.connection
-    }
-
-    connection, err := gorm.Open(
-	"mysql",
-	fmt.Sprintf(
-	    "%s:%s@(%s:%s)/%s?parseTime=true",
-	    connectionFactory.username,
-	    connectionFactory.password,
-	    connectionFactory.host,
-	    connectionFactory.port,
-	    connectionFactory.database,
-	),
-    )
-    if err != nil {
-	panic(err)
-    }
-
-    connectionFactory.connection = connection
-
-    return connection
+// GetConnection returns the connection handlers
+func (connectionHandler ConnectionHandler) GetConnection() *gorm.DB {
+	return connectionHandler.connection
 }
 
-func (connectionFactory *ConnectionFactory) Close() error {
-    if connectionFactory.connection == nil {
-	return nil
-    }
+// Close closes the db connection
+func (connectionHandler *ConnectionHandler) Close() error {
+	err := connectionHandler.connection.Close()
 
-    err := connectionFactory.connection.Close()
-    connectionFactory.connection = nil
-
-    return err
+	return err
 }

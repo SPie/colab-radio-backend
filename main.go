@@ -8,6 +8,7 @@ import (
 	"colab-radio/auth"
 	"colab-radio/db"
 	"colab-radio/router"
+	"colab-radio/router/context"
 	"colab-radio/user"
 )
 
@@ -17,7 +18,15 @@ func main() {
 		panic(err)
 	}
 
-	router := router.SetUp(setUpConnectionFactory(), setUpAuthenticatorFactory(), setUpAuthControllerFactory(), setUpUserControllerFactory())
+	connectionHandler, err := setUpConnectionHandler()
+	if err != nil {
+		panic(err)
+	}
+	defer connectionHandler.Close()
+
+	appContext := context.NewAppContext(user.NewUserRepository(connectionHandler), setUpAuthController(), setUpUserController())
+
+	router := router.SetUp(appContext)
 
 	err = router.Run(os.Getenv("HOST_ADDRESS"))
 	if err != nil {
@@ -25,16 +34,8 @@ func main() {
 	}
 }
 
-func setUpAuthenticatorFactory() auth.AuthenticatorFactory {
-	return auth.NewAuthenticatorFactory(
-		os.Getenv("AUTH_CALLBACK_URL"),
-		os.Getenv("SPOTIFY_CLIENT_ID"),
-		os.Getenv("SPOTIFY_SECRET"),
-	)
-}
-
-func setUpConnectionFactory() *db.ConnectionFactory {
-	return db.NewConnectionFactory(
+func setUpConnectionHandler() (*db.ConnectionHandler, error) {
+	return db.New(
 		os.Getenv("DB_USERNAME"),
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_HOST"),
@@ -43,10 +44,14 @@ func setUpConnectionFactory() *db.ConnectionFactory {
 	)
 }
 
-func setUpAuthControllerFactory() auth.AuthControllerFactory {
-	return auth.NewAuthControllerFactory()
+func setUpAuthController() auth.AuthController {
+	return auth.NewAuthController(
+		os.Getenv("AUTH_CALLBACK_URL"),
+		os.Getenv("SPOTIFY_CLIENT_ID"),
+		os.Getenv("SPOTIFY_SECRET"),
+	)
 }
 
-func setUpUserControllerFactory() user.UserControllerFactory {
-	return user.NewUserControllerFactory()
+func setUpUserController() user.UserController {
+	return user.NewUserController()
 }
