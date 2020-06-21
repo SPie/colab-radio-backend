@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"colab-radio/auth"
-	"colab-radio/router/context"
+	"colab-radio/context"
 )
 
 // SetUp initializes all routes and middlewares
@@ -16,14 +16,14 @@ func SetUp(appContext *context.AppContext) *gin.Engine {
 
 	engine.Use(setUpCors())
 
-	engine.Group("/api")
+	api := engine.Group("/api")
 	{
-		engine.GET("/auth", appContext.AuthController.InitAuth(auth.CreateState))
-		engine.POST("/auth-finish", appContext.AuthController.FinishAuth(appContext.UserRepository))
+		api.GET("/auth", appContext.AuthController.InitAuth(auth.CreateState))
+		api.POST("/auth-finish", appContext.AuthController.FinishAuth(appContext.UserRepository))
 
-		engine.Use(appContext.AuthController.Authentication(appContext.UserRepository))
+		api.Use(appContext.AuthController.Authentication(appContext.UserRepository))
 		{
-			engine.GET("/users", appContext.UserController.GetAuthenticatedUser())
+			api.GET("/users", appContext.UserController.GetAuthenticatedUser())
 		}
 	}
 
@@ -31,14 +31,14 @@ func SetUp(appContext *context.AppContext) *gin.Engine {
 }
 
 func setUpCors() gin.HandlerFunc {
-    config := cors.Config{
-        AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-        AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "X-Authentication-State"},
-        AllowCredentials: false,
-        ExposeHeaders: []string{"X-Authentication-State"},
-        MaxAge: 12 * time.Hour,
-        AllowAllOrigins: true,
-    }
-    
-    return cors.New(config)
+	config := cors.Config{
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "X-Authentication-State"},
+		AllowCredentials: false,
+		ExposeHeaders:    []string{"X-Authentication-State"},
+		MaxAge:           12 * time.Hour,
+		AllowAllOrigins:  true,
+	}
+
+	return cors.New(config)
 }
