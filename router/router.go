@@ -24,6 +24,8 @@ func SetUp(appContext *context.AppContext) *gin.Engine {
 		api.Use(appContext.AuthController.Authentication(appContext.UserRepository))
 		{
 			api.GET("/users", appContext.UserController.GetAuthenticatedUser())
+
+			api.GET("/tracks", appContext.TrackController.Search())
 		}
 	}
 
@@ -34,10 +36,10 @@ func setUpCors() gin.HandlerFunc {
 	config := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "X-Authentication-State"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		ExposeHeaders:    []string{"X-Authentication-State"},
 		MaxAge:           12 * time.Hour,
-		AllowAllOrigins:  true,
+		AllowOrigins:     []string{"http://localhost:8080"}, //TODO
 	}
 
 	return cors.New(config)

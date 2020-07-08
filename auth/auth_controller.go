@@ -14,13 +14,19 @@ import (
 	"colab-radio/user"
 )
 
-// AuthController all authentication routes
-type AuthController struct {
+// Controller all authentication routes
+type Controller interface {
+	InitAuth(stateCreator func() string) gin.HandlerFunc
+	FinishAuth(userRepository user.Repository) gin.HandlerFunc
+	Authentication(userRepository user.Repository) gin.HandlerFunc
+}
+
+type controller struct {
 	authenticator spotify.Authenticator
 }
 
-// NewAuthController creates a new AuthController
-func NewAuthController(authCallbackURL string, clientID string, secret string) AuthController {
+// NewController creates a new AuthController
+func NewController(authCallbackURL string, clientID string, secret string) Controller {
 	authenticator := spotify.NewAuthenticator(
 		authCallbackURL,
 		spotify.ScopeUserReadPrivate,
@@ -28,29 +34,30 @@ func NewAuthController(authCallbackURL string, clientID string, secret string) A
 	)
 	authenticator.SetAuthInfo(clientID, secret)
 
-	return AuthController{authenticator: authenticator}
+	return controller{authenticator: authenticator}
 }
 
 // InitAuth initializes the authentication flow
 // returns a authentication state string and the spotify auth url
-func (authController AuthController) InitAuth(stateCreator func() string) gin.HandlerFunc {
+func (controller controller) InitAuth(stateCreator func() string) gin.HandlerFunc {
+	fmt.Println("TEST")
 	return func(c *gin.Context) {
 		state := stateCreator()
 		c.Header("X-Authentication-State", state)
-		c.JSON(200, map[string]string{"authUrl": authController.authenticator.AuthURL(state)})
+		c.JSON(200, map[string]string{"authUrl": controller.authenticator.AuthURL(state)})
 	}
 }
 
 // FinishAuth finalizes the authentication flow
-func (authController AuthController) FinishAuth(userRepository user.UserRepository) gin.HandlerFunc {
+func (controller controller) FinishAuth(userRepository user.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, err := authController.authenticator.Token(c.GetHeader("X-Authentication-State"), c.Request)
+		token, err := controller.authenticator.Token(c.GetHeader("X-Authentication-State"), c.Request)
 		if err != nil {
 			notAuthenticated(c, err)
 			return
 		}
 
-		client := authController.authenticator.NewClient(token)
+		client := controller.authenticator.NewClient(token)
 		spotifyUser, err := (&client).CurrentUser()
 		if err != nil {
 			notAuthenticated(c, err)
@@ -68,7 +75,7 @@ func (authController AuthController) FinishAuth(userRepository user.UserReposito
 }
 
 // Authentication Middleware
-func (authController AuthController) Authentication(userRepository user.UserRepository) gin.HandlerFunc {
+func (controller controller) Authentication(userRepository user.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		refreshToken, err := c.Cookie("refresh-token")
 		if err != nil {
@@ -85,26 +92,35 @@ func (authController AuthController) Authentication(userRepository user.UserRepo
 			token.Expiry = parseAccessTokenExpiry(accessTokenExpiry)
 		}
 
-		client := authController.authenticator.NewClient(token)
+		client := controller.authenticator.NewClient(token)
 
-		spotifyUser, err := client.CurrentUser()
-		if err != nil {
+		user, err := getAuthenticatedUser(client, userRepository)
+		if user.ID == 0 {
 			c.AbortWithError(401, err)
 			return
 		}
 
-		user := userRepository.GetUserBySpotifyID(spotifyUser.ID)
-		if user.ID == 0 {
-			c.AbortWithError(401, errors.New("User doesn't exist"))
-			return
-		}
-
 		c.Set("authenticated-user", user)
+		c.Set("spotify-client", client)
 
 		c.Next()
 
 		attachAccessToken(c, token.AccessToken, token.Expiry)
 	}
+}
+
+func getAuthenticatedUser(client spotify.Client, userRepository user.Repository) (*user.User, error) {
+	spotifyUser, err := client.CurrentUser()
+	if err != nil {
+		return &user.User{}, err
+	}
+
+	u := userRepository.GetUserBySpotifyID(spotifyUser.ID)
+	if u.ID == 0 {
+		return &user.User{}, errors.New("User doesn't exist")
+	}
+
+	return u, nil
 }
 
 func notAuthenticated(c *gin.Context, err error) {

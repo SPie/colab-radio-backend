@@ -6,9 +6,10 @@ import (
 	"github.com/joho/godotenv"
 
 	"colab-radio/auth"
+	"colab-radio/context"
 	"colab-radio/db"
 	"colab-radio/router"
-	"colab-radio/context"
+	"colab-radio/track"
 	"colab-radio/user"
 )
 
@@ -24,7 +25,12 @@ func main() {
 	}
 	defer connectionHandler.Close()
 
-	appContext := context.NewAppContext(user.NewUserRepository(connectionHandler), setUpAuthController(), setUpUserController())
+	appContext := context.NewAppContext(
+		user.NewRepository(connectionHandler),
+		setUpAuthController(),
+		setUpUserController(),
+		track.NewController(track.NewService()),
+	)
 
 	router := router.SetUp(appContext)
 
@@ -44,14 +50,14 @@ func setUpConnectionHandler() (*db.ConnectionHandler, error) {
 	)
 }
 
-func setUpAuthController() auth.AuthController {
-	return auth.NewAuthController(
+func setUpAuthController() auth.Controller {
+	return auth.NewController(
 		os.Getenv("AUTH_CALLBACK_URL"),
 		os.Getenv("SPOTIFY_CLIENT_ID"),
 		os.Getenv("SPOTIFY_SECRET"),
 	)
 }
 
-func setUpUserController() user.UserController {
-	return user.NewUserController()
+func setUpUserController() user.Controller {
+	return user.NewController()
 }

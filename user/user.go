@@ -32,40 +32,40 @@ func (user *User) BeforeCreate(scope *gorm.Scope) error {
 	return nil
 }
 
-// UserRepository Interface for User database handling
-type UserRepository interface {
+// Repository Interface for User database handling
+type Repository interface {
 	GetUserBySpotifyID(spotifyID string) *User
 	Exists(spotifyID string) bool
 	CreateUser(spotifyID string, email string) *User
 }
 
-// GormUserRepository the Gorm implementation of UserRepository
-type GormUserRepository struct {
+// repository the Gorm implementation of UserRepository
+type repository struct {
 	connectionHandler *db.ConnectionHandler
 }
 
-// NewUserRepository created new UserRepository
-func NewUserRepository(connectionHandler *db.ConnectionHandler) UserRepository {
-	return &GormUserRepository{connectionHandler: connectionHandler}
+// NewRepository created new UserRepository
+func NewRepository(connectionHandler *db.ConnectionHandler) Repository {
+	return &repository{connectionHandler: connectionHandler}
 }
 
 // GetUserBySpotifyID get the id provided by spotify
-func (userRepository *GormUserRepository) GetUserBySpotifyID(spotifyID string) *User {
+func (repository *repository) GetUserBySpotifyID(spotifyID string) *User {
 	user := User{}
-	userRepository.connectionHandler.GetConnection().First(&user, &User{SpotifyID: spotifyID})
+	repository.connectionHandler.GetConnection().First(&user, &User{SpotifyID: spotifyID})
 
 	return &user
 }
 
 // Exists checks if a spotify user already exiss
-func (userRepository *GormUserRepository) Exists(spotifyID string) bool {
-	return userRepository.GetUserBySpotifyID(spotifyID).ID != 0
+func (repository *repository) Exists(spotifyID string) bool {
+	return repository.GetUserBySpotifyID(spotifyID).ID != 0
 }
 
 // CreateUser creates new user with spotify id and email
-func (userRepository *GormUserRepository) CreateUser(spotifyID string, email string) *User {
+func (repository *repository) CreateUser(spotifyID string, email string) *User {
 	user := NewUser(spotifyID, email)
-	userRepository.connectionHandler.GetConnection().Create(&user)
+	repository.connectionHandler.GetConnection().Create(&user)
 
 	return &user
 }
